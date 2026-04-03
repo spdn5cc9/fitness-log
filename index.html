@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FITNESS LOG</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--ac:#E8633A;--bg:#0d1117;--cb:#161b2e;--tx:#f0f2f7;--mu:#8890a4;--br:#222840;}
+html,body{height:100%;background:var(--bg);}
+body{font-family:-apple-system,'Hiragino Kaku Gothic ProN','Hiragino Sans',sans-serif;color:var(--tx);}
+#app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+.hdr{background:var(--ac);padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.hdr-back{background:rgba(255,255,255,0.2);border:none;border-radius:8px;width:32px;height:32px;color:white;cursor:pointer;font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;}
+.hdr-sub{color:rgba(255,255,255,0.65);font-size:11px;letter-spacing:.06em;}
+.hdr-title{color:white;font-size:17px;font-weight:600;}
+.card{background:var(--cb);border-radius:12px;border:.5px solid var(--br);padding:13px 14px;margin:8px 14px 0;}
+.card-tap{cursor:pointer;transition:opacity .15s;}
+.card-tap:active{opacity:.75;}
+.label{color:var(--mu);font-size:11px;letter-spacing:.05em;margin:0 0 5px;display:block;}
+.inp{width:100%;background:var(--cb);border:.5px solid var(--br);border-radius:10px;color:var(--tx);font-size:15px;padding:10px 12px;font-family:inherit;-webkit-appearance:none;outline:none;}
+.inp:focus{border-color:var(--ac);}
+textarea.inp{resize:none;line-height:1.6;}
+select.inp{cursor:pointer;}
+.btn{width:100%;padding:13px;background:var(--ac);border:none;border-radius:12px;color:white;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;}
+.btn:active{opacity:.8;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-ghost{background:none;border:.5px solid var(--br);color:var(--mu);}
+.badge{font-size:11px;padding:3px 9px;border-radius:20px;background:rgba(232,99,58,.13);color:var(--ac);}
+.ex-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px;}
+.ex-label{color:var(--mu);font-size:10px;margin:0 0 4px;display:block;}
+.ex-inp{width:100%;background:var(--bg);border:.5px solid var(--br);border-radius:8px;color:var(--tx);font-size:14px;padding:7px 6px;font-family:inherit;text-align:center;-webkit-appearance:none;outline:none;}
+.ex-inp:focus{border-color:var(--ac);}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:24px;}
+.auth-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;padding:28px 22px;}
+.auth-logo{text-align:center;margin-bottom:36px;}
+.auth-logo-mark{font-size:40px;margin-bottom:8px;}
+.auth-logo-title{font-size:26px;font-weight:700;color:var(--ac);letter-spacing:.05em;}
+.auth-logo-sub{color:var(--mu);font-size:13px;margin-top:6px;}
+.auth-field{margin-bottom:14px;}
+.auth-toggle{text-align:center;margin-top:18px;color:var(--mu);font-size:14px;}
+.auth-toggle a{color:var(--ac);cursor:pointer;}
+.err{color:#f87171;font-size:13px;margin:6px 0;min-height:18px;}
+.fab{position:fixed;bottom:28px;right:calc(50% - 240px + 16px);width:54px;height:54px;background:var(--ac);border:none;border-radius:50%;color:white;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+@media(max-width:480px){.fab{right:16px;}}
+.empty{text-align:center;padding:60px 20px;color:var(--mu);}
+.dtable{width:100%;border-collapse:collapse;}
+.dtable th{color:var(--mu);font-size:11px;font-weight:400;padding-bottom:8px;text-align:left;}
+.dtable td{font-size:14px;padding:9px 0;border-bottom:.5px solid var(--br);color:var(--tx);}
+.dtable td.c{text-align:center;color:var(--mu);font-size:13px;}
+.dtable td.r{text-align:right;color:var(--ac);font-size:13px;}
+.loading{flex:1;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:14px;}
+.spinner{width:28px;height:28px;border:2px solid var(--br);border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite;margin-right:10px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#2a3a50;color:var(--tx);padding:10px 20px;border-radius:24px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;z-index:999;border:.5px solid var(--br);}
+#toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading"><div class="spinner"></div>読み込み中...</div></div>
+<div id="toast"></div>
+<script>
+// ============================================================
+// ここを書き換えてください
+const SUPABASE_URL  = 'https://lidbmsafqefqancrgkyv.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxpZGJtc2FmcWVmcWFuY3Jna3l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjA3MDgsImV4cCI6MjA5MDc5NjcwOH0.aYRlWVLRb9ZcxC9Uz9RFXrZ3W0e0rhvCSuU34EDIeG4';
+// ============================================================
+
+let accessToken = null;
+let currentUser = null;
+let profile = null;
+let sessions = [], members = [];
+let selectedSession = null;
+let authMode = 'login';
+let addExercises = [mkEx()];
+let isSaving = false;
+
+function mkEx(){ return {name:'',sets:3,reps:10,weight:0}; }
+function today(){ return new Date().toISOString().slice(0,10); }
+
+// Supabase REST API 呼び出し（外部ライブラリ不要）
+async function sbFetch(method, path, body, token) {
+  const headers = {
+    'apikey': SUPABASE_ANON,
+    'Authorization': 'Bearer ' + (token || SUPABASE_ANON),
+    'Content-Type': 'application/json'
+  };
+  if (method === 'POST' && path.startsWith('/rest/')) {
+    headers['Prefer'] = 'return=representation';
+  }
+  const res = await fetch(SUPABASE_URL + path, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!res.ok) {
+    throw new Error((data && (data.error_description || data.message || data.msg)) || ('エラー: ' + res.status));
+  }
+  return data;
+}
+
+function saveSession(token, uid) {
+  accessToken = token;
+  try { localStorage.setItem('fl_token', token); localStorage.setItem('fl_uid', uid); } catch(e) {}
+}
+function clearSession() {
+  accessToken = null;
+  try { localStorage.removeItem('fl_token'); localStorage.removeItem('fl_uid'); } catch(e) {}
+}
+function loadStoredSession() {
+  try { return { token: localStorage.getItem('fl_token'), uid: localStorage.getItem('fl_uid') }; } catch(e) { return {}; }
+}
+
+async function signUp() {
+  const email = v('a-email'), pass = v('a-pass'), name = v('a-name');
+  if (!email||!pass||!name){ setErr('a-err','すべての項目を入力してください'); return; }
+  if (pass.length < 6){ setErr('a-err','パスワードは6文字以上にしてください'); return; }
+  setErr('a-err','');
+  try {
+    await sbFetch('POST', '/auth/v1/signup', { email, password:pass, data:{ name } });
+    toast('確認メールを送りました。メールを確認してからログインしてください。');
+    authMode = 'login';
+    render('auth');
+  } catch(e) { setErr('a-err', e.message); }
+}
+
+async function signIn() {
+  const email = v('a-email'), pass = v('a-pass');
+  if (!email||!pass){ setErr('a-err','メールアドレスとパスワードを入力してください'); return; }
+  setErr('a-err','');
+  try {
+    const data = await sbFetch('POST', '/auth/v1/token?grant_type=password', { email, password:pass });
+    saveSession(data.access_token, data.user.id);
+    currentUser = data.user;
+    await loadProfile();
+  } catch(e) { setErr('a-err','メールアドレスまたはパスワードが違います'); }
+}
+
+async function signOut() {
+  try { await sbFetch('POST', '/auth/v1/logout', {}, accessToken); } catch(e) {}
+  clearSession();
+  currentUser = null; profile = null;
+  render('auth');
+}
+
+async function loadProfile() {
+  const data = await sbFetch('GET', '/rest/v1/profiles?id=eq.'+currentUser.id+'&select=*', null, accessToken);
+  if (!data || !data.length){ render('auth'); return; }
+  profile = data[0];
+  if (profile.role === 'trainer') {
+    await Promise.all([loadMembers(), loadTrainerSessions()]);
+    render('list');
+  } else {
+    await loadMemberSessions();
+    render('list');
+  }
+}
+
+async function loadTrainerSessions() {
+  const data = await sbFetch('GET',
+    '/rest/v1/training_sessions?select=*,member:profiles!member_id(name),exercises(*)&order=session_date.desc',
+    null, accessToken);
+  sessions = (data||[]).map(s=>({...s, exercises:(s.exercises||[]).sort((a,b)=>a.sort_order-b.sort_order)}));
+}
+
+async function loadMemberSessions() {
+  const data = await sbFetch('GET',
+    '/rest/v1/training_sessions?member_id=eq.'+currentUser.id+'&select=*,trainer:profiles!trainer_id(name),exercises(*)&order=session_date.desc',
+    null, accessToken);
+  sessions = (data||[]).map(s=>({...s, exercises:(s.exercises||[]).sort((a,b)=>a.sort_order-b.sort_order)}));
+}
+
+async function loadMembers() {
+  const data = await sbFetch('GET', '/rest/v1/profiles?role=eq.member&select=id,name&order=name', null, accessToken);
+  members = data||[];
+}
+
+async function saveSession_() {
+  if (isSaving) return;
+  const memberId = v('f-member'), date = v('f-date'), note = v('f-note');
+  if (!memberId||!date){ setErr('f-err','会員と日付を選択してください'); return; }
+  const exRows = [];
+  document.querySelectorAll('.ex-row').forEach(function(_,i){
+    var name=(v('en'+i)||'').trim();
+    if(name) exRows.push({name:name,sets:+(v('es'+i)||3),reps:+(v('er'+i)||10),weight:+(v('ew'+i)||0),sort_order:i});
+  });
+  if (!exRows.length){ setErr('f-err','種目を1つ以上入力してください'); return; }
+  isSaving = true;
+  var btn = document.getElementById('save-btn');
+  if (btn){ btn.disabled=true; btn.textContent='保存中...'; }
+  try {
+    var sess = await sbFetch('POST', '/rest/v1/training_sessions',
+      {member_id:memberId, trainer_id:currentUser.id, session_date:date, note:note}, accessToken);
+    var sessId = Array.isArray(sess) ? sess[0].id : sess.id;
+    await sbFetch('POST', '/rest/v1/exercises',
+      exRows.map(function(e){ return Object.assign({},e,{session_id:sessId}); }), accessToken);
+    toast('セッションを記録しました');
+    await loadTrainerSessions();
+    render('list');
+  } catch(e) {
+    setErr('f-err','保存に失敗しました: '+e.message);
+    if(btn){ btn.disabled=false; btn.textContent='記録を保存'; }
+  }
+  isSaving = false;
+}
+
+function render(v_) {
+  var app = document.getElementById('app');
+  if (!app) return;
+  var map = {auth:rAuth, list:rList, detail:rDetail, add:rAdd};
+  app.innerHTML = map[v_] ? map[v_]() : '';
+}
+
+function rAuth() {
+  var isLogin = authMode==='login';
+  return '<div class="auth-wrap">' +
+    '<div class="auth-logo"><div class="auth-logo-mark">💪</div>' +
+    '<div class="auth-logo-title">FITNESS LOG</div>' +
+    '<div class="auth-logo-sub">トレーニング記録・共有アプリ</div></div>' +
+    (isLogin?'':fld('a-name','text','お名前','山田 太郎')) +
+    fld('a-email','email','メールアドレス','mail@example.com') +
+    fld('a-pass','password','パスワード',isLogin?'':'6文字以上') +
+    '<p class="err" id="a-err"></p>' +
+    '<button class="btn" onclick="'+(isLogin?'signIn()':'signUp()')+'">'+
+    (isLogin?'ログイン':'新規登録')+'</button>' +
+    '<p class="auth-toggle">'+(isLogin?'アカウントをお持ちでない方は':'すでにアカウントをお持ちの方は')+
+    ' <a onclick="toggleAuth()">'+(isLogin?'新規登録':'ログイン')+'</a></p></div>';
+}
+
+function rList() {
+  var isTr = profile.role==='trainer';
+  var hd = '<div class="hdr"><div style="flex:1"><div class="hdr-sub">'+(isTr?'TRAINER':'MEMBER')+'</div>' +
+    '<div class="hdr-title">'+esc(profile.name)+'</div></div>' +
+    '<button onclick="signOut()" style="background:rgba(255,255,255,.18);border:none;border-radius:8px;padding:6px 12px;color:white;font-size:12px;cursor:pointer;">ログアウト</button></div>';
+  var body = '';
+  if (!sessions.length) {
+    body = '<div class="empty"><p style="font-size:40px;margin-bottom:14px">💪</p><p>記録がありません</p>'+(isTr?'<p style="font-size:13px;margin-top:8px;">右下の＋から記録を追加</p>':'')+'</div>';
+  } else {
+    body = sessions.map(function(s){
+      var badges=(s.exercises||[]).slice(0,3).map(function(e){ return '<span class="badge">'+esc(e.name)+'</span>'; }).join(' ');
+      var more=s.exercises&&s.exercises.length>3?'<span style="color:var(--mu);font-size:11px;">+'+( s.exercises.length-3)+'</span>':'';
+      var who=isTr?'<p style="font-size:14px;font-weight:600;margin:0;">'+esc(s.member&&s.member.name||'—')+'</p>':
+        '<p style="font-size:13px;color:var(--mu);margin:0;">担当：'+esc(s.trainer&&s.trainer.name||'—')+'</p>';
+      return '<div class="card card-tap" onclick="openDetail(\''+s.id+'\')">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+        '<div>'+who+'</div><span style="color:var(--mu);font-size:12px;">'+s.session_date+'</span></div>' +
+        '<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">'+badges+more+'</div></div>';
+    }).join('');
+  }
+  var fab=isTr?'<button class="fab" onclick="openAdd()">＋</button>':'';
+  return hd+'<div class="scroll" style="padding-bottom:'+(isTr?'80px':'24px')+'">'+body+'</div>'+fab;
+}
+
+function rDetail() {
+  var s=selectedSession; if(!s) return rList();
+  var isTr=profile.role==='trainer';
+  var rows=(s.exercises||[]).map(function(e){
+    return '<tr><td>'+esc(e.name)+'</td><td class="c">'+e.sets+'セット</td><td class="c">'+e.reps+'回</td>' +
+      '<td class="r">'+(e.weight>0?e.weight+'kg':'自重')+'</td></tr>';
+  }).join('');
+  var note=s.note?'<div class="card" style="margin-top:12px"><span class="label">メモ</span>' +
+    '<p style="font-size:14px;line-height:1.7;margin-top:4px">'+esc(s.note)+'</p></div>':'';
+  return '<div class="hdr"><button class="hdr-back" onclick="render(\'list\')">‹</button>' +
+    '<div><div class="hdr-sub">'+s.session_date+'</div>' +
+    '<div class="hdr-title">'+(isTr?esc(s.member&&s.member.name||'—'):'トレーニング記録')+'</div></div></div>' +
+    '<div class="scroll" style="padding:14px"><span class="label">トレーニング内容</span>' +
+    '<div class="card" style="margin:6px 0 0;padding:12px 13px"><table class="dtable">' +
+    '<thead><tr><th>種目</th><th style="text-align:center">セット</th><th style="text-align:center">回数</th><th style="text-align:right">重量</th></tr></thead>' +
+    '<tbody>'+rows+'</tbody></table></div>'+note+'</div>';
+}
+
+function rAdd() {
+  var opts=members.map(function(m){ return '<option value="'+m.id+'">'+esc(m.name)+'</option>'; }).join('');
+  var rows=addExercises.map(function(_,i){
+    return '<div class="card ex-row" style="margin:0 0 8px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+      '<span class="label">種目 '+(i+1)+'</span>' +
+      (addExercises.length>1?'<button onclick="removeEx('+i+')" style="background:none;border:none;color:var(--mu);cursor:pointer;font-size:20px;line-height:1;padding:0">×</button>':'')+
+      '</div><input id="en'+i+'" class="inp" type="text" placeholder="種目名（例：ベンチプレス）">' +
+      '<div class="ex-grid">' +
+      '<div><span class="ex-label">セット</span><input id="es'+i+'" class="ex-inp" type="number" value="3" min="1"></div>' +
+      '<div><span class="ex-label">回数</span><input id="er'+i+'" class="ex-inp" type="number" value="10" min="1"></div>' +
+      '<div><span class="ex-label">重量(kg)</span><input id="ew'+i+'" class="ex-inp" type="number" value="0" min="0"></div>' +
+      '</div></div>';
+  }).join('');
+  return '<div class="hdr"><button class="hdr-back" onclick="render(\'list\')">‹</button>' +
+    '<div><div class="hdr-sub">TRAINER</div><div class="hdr-title">セッションを記録</div></div></div>' +
+    '<div class="scroll" style="padding:14px">' +
+    '<div style="margin-bottom:13px"><span class="label">会員</span>' +
+    '<select id="f-member" class="inp"><option value="">選択してください</option>'+opts+'</select></div>' +
+    '<div style="margin-bottom:13px"><span class="label">日付</span>' +
+    '<input id="f-date" class="inp" type="date" value="'+today()+'"></div>' +
+    '<div style="margin-bottom:13px"><span class="label">トレーニング種目</span>' +
+    '<div style="margin-top:6px">'+rows+'</div>' +
+    '<button onclick="addEx()" class="btn btn-ghost" style="margin-top:4px">＋ 種目を追加</button></div>' +
+    '<div style="margin-bottom:20px"><span class="label">メモ・コメント</span>' +
+    '<textarea id="f-note" class="inp" rows="3" placeholder="次回への申し送りなど..."></textarea></div>' +
+    '<p class="err" id="f-err"></p>' +
+    '<button id="save-btn" class="btn" onclick="saveSession_()">記録を保存</button></div>';
+}
+
+function fld(id,type,label,ph){
+  return '<div class="auth-field"><span class="label">'+label+'</span>' +
+    '<input id="'+id+'" class="inp" type="'+type+'" placeholder="'+ph+'"></div>';
+}
+function v(id){ var el=document.getElementById(id); return el?el.value:''; }
+function setErr(id,msg){ var el=document.getElementById(id); if(el) el.textContent=msg; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toast(msg){
+  var t=document.getElementById('toast'); if(!t) return;
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); },3000);
+}
+function toggleAuth(){ authMode=authMode==='login'?'signup':'login'; render('auth'); }
+function openDetail(id){ selectedSession=sessions.find(function(s){ return s.id===id; }); render('detail'); }
+function openAdd(){ addExercises=[mkEx()]; render('add'); }
+function addEx(){ addExercises.push(mkEx()); render('add'); }
+function removeEx(i){ addExercises.splice(i,1); render('add'); }
+
+// 起動時：保存済みセッションを確認
+(async function(){
+  var stored = loadStoredSession();
+  if (stored.token && stored.uid) {
+    accessToken = stored.token;
+    try {
+      var data = await sbFetch('GET', '/auth/v1/user', null, accessToken);
+      currentUser = data;
+      await loadProfile();
+    } catch(e) {
+      clearSession();
+      render('auth');
+    }
+  } else {
+    render('auth');
+  }
+})();
+</script>
+</body>
+</html>
