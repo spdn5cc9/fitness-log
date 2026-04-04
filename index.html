@@ -240,7 +240,7 @@ async function saveComment(sessId) {
 function render(v_) {
   var app = document.getElementById('app');
   if (!app) return;
-  var map = { auth:rAuth, list:rList, member:rMember, detail:rDetail, add:rAdd };
+  var map = { auth:rAuth, list:rList, detail:rDetail, add:rAdd };
   app.innerHTML = map[v_] ? map[v_]() : '';
 }
 
